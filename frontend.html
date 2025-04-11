@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CMAR Support Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* Base styles */
+    :root {
+      --primary-glow: #c471ed;
+      --secondary-gradient-start: #12c2e9;
+      --secondary-gradient-mid: #c471ed;
+      --secondary-gradient-end: #f64f59;
+      --user-msg-start: #00aeff;
+      --user-msg-end: #3a3a4d;
+      --bot-bg: #1e1e2f;
+      --bot-text: #e0e0e0;
+      --error-bg: rgba(255, 78, 78, 0.8);
+      --error-border: #ff0000;
+      --container-bg: rgba(255, 255, 255, 0.05);
+      --header-bg: rgba(255, 255, 255, 0.08);
+      --input-bg: rgba(0, 0, 0, 0.2);
+      --input-focus-bg: rgba(0, 0, 0, 0.3);
+      --text-color: #ffffff;
+      --placeholder-color: #aaa;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --scrollbar-thumb: rgba(196, 113, 237, 0.6); /* var(--primary-glow) with alpha */
+      --scrollbar-track: rgba(255, 255, 255, 0.05);
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to right top, #141e30, #243b55);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden; /* Prevent body scroll */
+    }
+
+    /* Chat container */
+    .chat-container {
+      width: 95%;
+      max-width: 600px;
+      height: 85vh;
+      max-height: 750px;
+      background: var(--container-bg);
+      border-radius: 20px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Header */
+    .chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 22px;
+        background: var(--header-bg);
+        color: var(--text-color);
+        font-size: 1.3em;
+        font-weight: 600;
+        flex-shrink: 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    /* Coin Counter Style */
+    .coin-counter {
+        font-size: 0.85em;
+        font-weight: 600;
+        background-color: rgba(0, 0, 0, 0.2);
+        padding: 6px 14px;
+        border-radius: 15px;
+        border: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: transform 0.2s ease-out, background-color 0.3s ease;
+        cursor: default; /* Indicate it's not clickable */
+    }
+    .coin-counter:hover {
+        background-color: rgba(0, 0, 0, 0.3);
+    }
+    .coin-icon { /* Style the emoji span */
+        display: inline-block;
+        transform: translateY(1px); /* Minor alignment */
+    }
+
+    /* Messages area */
+    .chat-messages {
+      flex: 1; /* Takes remaining space */
+      padding: 20px;
+      overflow-y: auto; /* Enable scrolling */
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+      /* Custom Scrollbar */
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    }
+    /* Webkit Scrollbar */
+    .chat-messages::-webkit-scrollbar { width: 8px; }
+    .chat-messages::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 10px; }
+    .chat-messages::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); border-radius: 10px; border: 2px solid var(--scrollbar-track); }
+
+    /* Individual messages */
+    .message {
+      max-width: 85%; /* Limit width */
+      padding: 12px 18px;
+      border-radius: 18px;
+      font-size: 0.98em;
+      line-height: 1.55;
+      white-space: pre-wrap; /* Respect newlines */
+      word-wrap: break-word; /* Break long words */
+      animation: fadeIn 0.4s ease-out;
+      position: relative;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .user-message {
+      align-self: flex-end; /* Align right */
+      background: linear-gradient(135deg, var(--user-msg-start), var(--user-msg-end));
+      color: #fff;
+      border-radius: 18px 18px 5px 18px; /* Tail */
+    }
+
+    .bot-message {
+      align-self: flex-start; /* Align left */
+      background: var(--bot-bg);
+      color: var(--bot-text);
+      border-left: 5px solid var(--primary-glow);
+      border-radius: 5px 18px 18px 18px; /* Tail */
+      padding-left: 18px; /* Space for pseudo-element */
+      box-shadow: 0 5px 15px rgba(196, 113, 237, 0.15); /* Subtle glow */
+    }
+    /* Bot message indicator dot */
+    .bot-message::before {
+      content: "";
+      position: absolute;
+      top: 12px;
+      left: -12px; /* Position outside the border */
+      width: 10px;
+      height: 10px;
+      background: radial-gradient(circle, #e58dff, var(--primary-glow));
+      border-radius: 50%;
+      box-shadow: 0 0 5px var(--primary-glow);
+    }
+    /* Style bold text within bot messages */
+    .bot-message strong {
+      font-weight: 600;
+      color: #f0f0f0; /* Slightly lighter */
+    }
+    /* Style bullet points */
+    .bot-message ul {
+        padding-left: 25px; /* Indent list further */
+        margin-top: 8px;
+        margin-bottom: 8px;
+        list-style-type: disc; /* Use standard bullets */
+    }
+    .bot-message li {
+        margin-bottom: 6px; /* Space between list items */
+        line-height: 1.6; /* Improve list item readability */
+    }
+
+
+    .loading-message {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.1);
+      color: #bbb;
+      font-style: italic;
+      padding: 10px 15px;
+      border-radius: 18px;
+      box-shadow: none;
+      border-left: none; /* No border for loading */
+    }
+    .loading-message::before { display: none; } /* No dot for loading */
+    .loading-message::after { content: '.'; animation: loadingDots 1.5s steps(3, end) infinite; display: inline-block; }
+
+    .error-message {
+      align-self: flex-start;
+      background: var(--error-bg);
+      color: #fff;
+      font-weight: 600;
+      border-left: 5px solid var(--error-border);
+      border-radius: 5px 18px 18px 18px;
+      box-shadow: 0 3px 8px rgba(255, 0, 0, 0.2);
+    }
+     .error-message::before { display: none; } /* No dot for error */
+
+
+    /* Chat input form */
+    .chat-form {
+      display: flex;
+      padding: 15px;
+      border-top: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(10px);
+      flex-shrink: 0; /* Prevent shrinking */
+    }
+
+    .chat-form input {
+      flex: 1; /* Take available space */
+      padding: 14px 20px;
+      border: 1px solid var(--border-color);
+      border-radius: 25px; /* Pill shape */
+      font-size: 1em;
+      font-family: 'Poppins', sans-serif; /* Ensure font consistency */
+      background: var(--input-bg);
+      color: var(--text-color);
+      outline: none; /* Remove default focus outline */
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+    .chat-form input:focus {
+      background: var(--input-focus-bg);
+      border-color: rgba(196, 113, 237, 0.5); /* Glow color */
+    }
+    .chat-form input::placeholder { color: var(--placeholder-color); }
+
+    .chat-form button {
+      background: linear-gradient(to right, var(--secondary-gradient-start), var(--secondary-gradient-mid), var(--secondary-gradient-end));
+      color: white;
+      border: none;
+      padding: 14px 22px;
+      margin-left: 12px;
+      border-radius: 25px; /* Pill shape */
+      font-size: 1em;
+      font-weight: 600;
+      font-family: 'Poppins', sans-serif;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.3s ease, background 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    .chat-form button:hover:not(:disabled) {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 6px 20px rgba(196, 113, 237, 0.4);
+    }
+    .chat-form button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      opacity: 0.6;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes loadingDots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+
+    /* Toast Notification */
+    .chat-toast {
+      position: fixed;
+      top: 20px; /* Position from top */
+      left: 50%;
+      transform: translateX(-50%) translateY(-60px); /* Start off-screen */
+      background-color: #2a2a3a;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 0.95em;
+      font-weight: 600;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      opacity: 0;
+      pointer-events: none; /* Non-interactive */
+      transition: opacity 0.4s ease-in-out, transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+      z-index: 1000;
+      border: 1px solid var(--border-color);
+      text-align: center;
+    }
+    .chat-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0); /* Slide in */
+    }
+
+    /* Decorative Glow Bar (Optional Aesthetic) */
+    .glow-bar {
+      position: fixed;
+      top: 0;
+      left: 20px;
+      width: 6px;
+      height: 100vh;
+      background: var(--primary-glow);
+      box-shadow: 0 0 8px var(--primary-glow);
+      animation: glowPulse 2.5s infinite ease-in-out;
+      z-index: -1; /* Behind everything */
+    }
+    @keyframes glowPulse {
+      0%   { box-shadow: 0 0 6px rgba(196, 113, 237, 0.5); opacity: 0.7; }
+      50%  { box-shadow: 0 0 18px rgba(196, 113, 237, 1), 0 0 25px rgba(196, 113, 237, 0.7); opacity: 1; }
+      100% { box-shadow: 0 0 6px rgba(196, 113, 237, 0.5); opacity: 0.7; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="chat-toast" id="chatToast">Thinking...</div>
+
+  <div class="glow-bar"></div>
+
+  <div class="chat-container">
+    <div class="chat-header">
+        <span>CMAR Support Assistant</span>
+        <div class="coin-counter" id="coinCounter">
+             Coins: 0 <span class="coin-icon" role="img" aria-label="coin">🪙</span>
+        </div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="bot-message message" id="initialMessage">Hi! How can I help you today?</div>
+    </div>
+    <form class="chat-form" id="chatForm" onsubmit="handleFormSubmit(event)">
+      <input type="text" id="userInput" placeholder="Type your message..." required autocomplete="off" />
+      <button type="submit" id="sendButton">Send</button>
+    </form>
+  </div>
+
+  <script>
+    // --- DOM Elements ---
+    const chatMessages = document.getElementById("chatMessages");
+    const userInput = document.getElementById("userInput");
+    const sendButton = document.getElementById("sendButton");
+    const chatForm = document.getElementById("chatForm");
+    const toastElement = document.getElementById("chatToast");
+    const coinCounterElement = document.getElementById("coinCounter");
+    const initialMessage = document.getElementById("initialMessage"); // Reference initial message
+
+    // --- API Endpoints ---
+    // Ensure this matches the address where your Flask app is running
+    const API_BASE_URL = "http://127.0.0.1:5000";
+    const API_CHAT_ENDPOINT = `${API_BASE_URL}/chat`;
+    const API_FEEDBACK_ENDPOINT = `${API_BASE_URL}/feedback`;
+
+    // --- State Variables ---
+    let currentConvoId = null;      // Stores Conversation ID received from backend
+    let expectingFeedback = false;  // Tracks if the agent asked for yes/no feedback
+    let currentCoins = 0;           // Session coin count (visual only)
+    let toastTimeout = null;        // Timeout ID for hiding the toast notification
+    let isLoading = false;          // Prevent multiple submissions while loading
+
+    // --- Constants ---
+    const PLACEHOLDER_NORMAL = "Type your message...";
+    const PLACEHOLDER_FEEDBACK = "Type 'yes' or 'no'...";
+    const LOADING_MESSAGE_TEXT = "Thinking..."; // Text for the loading bubble
+
+    // --- Functions ---
+
+    /** Safely updates the coin counter display */
+    function updateCoinCounter(newTotal) {
+        currentCoins = Math.max(0, newTotal); // Ensure coins don't go below zero
+        const coinIcon = `<span class="coin-icon" role="img" aria-label="coin">🪙</span>`;
+        coinCounterElement.innerHTML = `Coins: ${currentCoins} ${coinIcon}`;
+        // Add a subtle animation on update
+        coinCounterElement.style.transform = 'scale(1.1)';
+        setTimeout(() => { coinCounterElement.style.transform = 'scale(1)'; }, 200);
+    }
+
+    /** Shows a notification toast message */
+    function showToast(message, duration = 3000) {
+      if (toastTimeout) clearTimeout(toastTimeout); // Clear existing timeout
+      toastElement.textContent = message;
+      toastElement.classList.add("show");
+      // Set timeout to hide the toast
+      toastTimeout = setTimeout(() => {
+          toastElement.classList.remove("show");
+      }, duration);
+    }
+
+    /**
+     * Safely creates and appends a message bubble to the chat.
+     * Uses textContent for user-provided text to prevent XSS.
+     * Uses innerHTML carefully for bot messages to render formatting like bold/newlines/lists.
+     */
+    function appendMessage(text, sender, extraClasses = []) {
+      const messageDiv = document.createElement("div");
+      messageDiv.classList.add("message", `${sender}-message`);
+      if (extraClasses.length) messageDiv.classList.add(...extraClasses);
+
+      if (sender === "user") {
+          messageDiv.textContent = text; // Use textContent for user messages (safer)
+      } else {
+          // For bot messages, allow basic HTML rendering for formatting
+          // Basic sanitization (escape basic HTML tags first)
+          let processedText = text.replace(/</g, "<").replace(/>/g, ">");
+
+          // Convert Markdown-like formatting to HTML
+          // Newlines to <br>
+          processedText = processedText.replace(/(\r\n|\n|\r)/g, '<br>');
+          // **bold** to <strong>
+          processedText = processedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          // Convert lines starting with '-' or '*' to list items
+          // This is a simplified approach and might need refinement for nested lists or complex markdown
+          const lines = processedText.split('<br>');
+          let listHtml = '';
+          let inList = false;
+          lines.forEach(line => {
+              const trimmedLine = line.trim();
+              if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+                  const itemText = trimmedLine.substring(2).trim(); // Get text after '- ' or '* '
+                  if (!inList) {
+                      listHtml += '<ul>'; // Start list
+                      inList = true;
+                  }
+                  listHtml += `<li>${itemText}</li>`;
+              } else {
+                  if (inList) {
+                      listHtml += '</ul>'; // End list
+                      inList = false;
+                  }
+                  // Append the line, adding a <br> only if it's not the last line or if it wasn't part of a list ending
+                  // Check if the original split array had more lines or if the next element isn't empty after trimming
+                  // Add <br> if it's not the last line OR if it's the last line but wasn't part of a list
+                  if (lines.indexOf(line) < lines.length - 1 || !inList) {
+                     listHtml += line + '<br>';
+                  } else {
+                      listHtml += line; // No trailing <br> if it's the last line and we just closed a list
+                  }
+              }
+          });
+          if (inList) {
+              listHtml += '</ul>'; // Close list if it ends with list items
+          }
+          // Remove trailing <br> tags more robustly
+          listHtml = listHtml.replace(/(<br>\s*)+$/, '');
+
+          messageDiv.innerHTML = listHtml; // Use innerHTML for bot formatting
+      }
+
+      chatMessages.appendChild(messageDiv);
+      // Smooth scroll to the bottom
+      chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+      return messageDiv; // Return the created element
+    }
+
+
+    /** Removes the initial "Hi! How can I help you today?" message if it exists */
+    function removeInitialMessage() {
+        const initialMsgElement = document.getElementById("initialMessage");
+        if (initialMsgElement && chatMessages.contains(initialMsgElement)) {
+             try {
+                chatMessages.removeChild(initialMsgElement);
+             } catch(e) {
+                console.warn("Could not remove initial message:", e);
+             }
+        }
+    }
+
+    /** Main handler for form submission */
+    async function handleFormSubmit(event) {
+        event.preventDefault(); // Prevent default page reload
+        if (isLoading) return; // Don't submit if already processing
+
+        const message = userInput.value.trim();
+        if (!message) return; // Ignore empty input
+
+        removeInitialMessage(); // Remove initial greeting on first user message
+        appendMessage(message, "user"); // Display user's message immediately
+        const currentInput = message; // Store before clearing
+        userInput.value = "";         // Clear input field
+        setFormDisabled(true);        // Disable form during processing
+        isLoading = true;             // Set loading flag
+        let loadingMsg = appendMessage(LOADING_MESSAGE_TEXT, "bot", ["loading-message"]); // Show thinking indicator
+
+        try {
+            // Decide whether to send to /chat or /feedback
+            if (expectingFeedback) {
+                await handleFeedbackInput(currentInput);
+            } else {
+                await sendChatMessage(currentInput);
+            }
+        } catch (error) {
+            // Catch errors from the async functions (though they should handle internal errors)
+            console.error("Error during message handling:", error);
+            showToast("An unexpected error occurred", 4000);
+            appendMessage("Sorry, something went wrong processing your request.", "bot", ["error-message"]);
+            // Reset state in case of unexpected failure
+            expectingFeedback = false;
+            userInput.placeholder = PLACEHOLDER_NORMAL;
+        } finally {
+             // This block executes regardless of success or failure
+             if (loadingMsg && chatMessages.contains(loadingMsg)) {
+                  try { chatMessages.removeChild(loadingMsg); } catch (e) {console.warn("Could not remove loading message:", e);} // Remove thinking indicator safely
+             }
+             setFormDisabled(false); // Re-enable form
+             isLoading = false;      // Reset loading flag
+             userInput.focus();      // Focus input field for next message
+        }
+    }
+
+    /** Disables or enables the input field and send button */
+    function setFormDisabled(disabled) {
+        userInput.disabled = disabled;
+        sendButton.disabled = disabled;
+        userInput.placeholder = disabled ? "Waiting for response..." : (expectingFeedback ? PLACEHOLDER_FEEDBACK : PLACEHOLDER_NORMAL);
+    }
+
+    /** Sends a normal chat message to the /chat endpoint */
+    async function sendChatMessage(message) {
+        showToast("Sending message...");
+        try {
+            const payload = { message: message, convo_id: currentConvoId }; // Include current convo_id (can be null initially)
+            const response = await fetch(API_CHAT_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(payload),
+                // --- FIX 1: Increased Timeout ---
+                signal: AbortSignal.timeout(90000) // Increased timeout to 90 seconds
+            });
+
+            // --- FIX 2: Handle potential non-JSON OK responses more carefully ---
+            // Check if response is OK and has content before trying to parse JSON
+            if (!response.ok) {
+                 // Try parsing error JSON first
+                 let errorData = {};
+                 try {
+                     errorData = await response.json();
+                 } catch (parseError) {
+                     console.warn("Could not parse error response as JSON:", parseError);
+                     // Use status text if JSON parsing fails
+                     errorData.error = `Server Error: ${response.status} ${response.statusText || 'Unknown Error'}`;
+                 }
+                 const errorText = errorData?.error || `Server Error: ${response.status} ${response.statusText || 'Unknown Error'}`;
+                 console.error('API /chat Error:', errorText, 'Status:', response.status, 'Response Body:', errorData);
+                 appendMessage(`Error: ${errorText}`, "bot", ["error-message"]);
+                 showToast("Error receiving response", 4000);
+                 expectingFeedback = false; // Reset state on error
+                 userInput.placeholder = PLACEHOLDER_NORMAL;
+
+            } else if (response.headers.get("content-length") === "0" || response.status === 204) {
+                 // Handle successful but empty responses (e.g., 204 No Content)
+                 console.warn("/chat returned success status but no content:", response.status);
+                 // Decide how to handle this - maybe show a generic message or do nothing?
+                 // For now, let's assume it's unexpected and show an error-like message.
+                 appendMessage("Received an empty successful response from the server.", "bot", ["error-message"]);
+                 showToast("Empty server response", 4000);
+                 expectingFeedback = false; // Reset state
+                 userInput.placeholder = PLACEHOLDER_NORMAL;
+
+            } else {
+                 // We expect JSON for successful replies
+                 const data = await response.json(); // Parse JSON only if response is OK and has content
+
+                // Handle successful response (2xx) with expected JSON data
+                if (data.reply && data.convo_id) {
+                    currentConvoId = data.convo_id; // IMPORTANT: Update conversation ID from response
+                    appendMessage(data.reply, "bot");
+                    showToast("Response received", 2500);
+
+                    // Update feedback expectation based on the response flag
+                    expectingFeedback = data.ask_feedback === true;
+                    userInput.placeholder = expectingFeedback ? PLACEHOLDER_FEEDBACK : PLACEHOLDER_NORMAL;
+                    if (expectingFeedback) {
+                        console.log("Agent requested feedback (yes/no). Convo ID:", currentConvoId);
+                    }
+                } else {
+                    // Handle cases where response JSON is missing expected keys
+                    console.error("/chat success response missing 'reply' or 'convo_id':", data);
+                    appendMessage("Sorry, the server sent an incomplete response.", "bot", ["error-message"]);
+                    showToast("Invalid server response", 4000);
+                    expectingFeedback = false; // Reset state
+                    userInput.placeholder = PLACEHOLDER_NORMAL;
+                }
+            }
+        } catch (error) {
+            // --- FIX 3: Refined Error Handling in Catch Block ---
+             console.error('Network/Fetch Error (/chat):', error);
+             let errorMsgUser; // Define user message based on error type
+
+             if (error.name === 'AbortError') {
+                 // Specifically handle timeout
+                 errorMsgUser = "Request timed out. The server is taking too long to respond (more than 90 seconds).";
+                 showToast("Request Timeout", 5000); // Show longer toast for timeout
+             } else if (error instanceof SyntaxError) {
+                  // Handle JSON parsing errors (if response.json() fails)
+                  errorMsgUser = "Error: Received an invalid response format from the server.";
+                  showToast("Invalid Response Format", 4000);
+             } else if (error instanceof TypeError && error.message.includes('NetworkError')) {
+                 // Catch generic network errors (like connection refused, DNS error) more reliably
+                 errorMsgUser = "Network Error: Could not reach the support server. Please check your connection and if the server is running.";
+                 showToast("Connection Failed", 4000);
+             }
+              else {
+                  // Catch other unexpected fetch-related errors
+                  errorMsgUser = "An unexpected network or fetch error occurred. Please check the console for details.";
+                  showToast("Unexpected Fetch Error", 4000);
+             }
+
+             appendMessage(errorMsgUser, "bot", ["error-message"]);
+             expectingFeedback = false; // Reset state on failure
+             userInput.placeholder = PLACEHOLDER_NORMAL;
+        }
+    }
+
+    /** Sends 'yes'/'no' feedback to the /feedback endpoint */
+     async function handleFeedbackInput(message) {
+        const feedbackLower = message.toLowerCase();
+        let resolved = null; // Use null to indicate invalid input initially
+
+        // --- Validate feedback input ---
+        if (feedbackLower === 'yes' || feedbackLower === 'y') {
+            resolved = true;
+        } else if (feedbackLower === 'no' || feedbackLower === 'n') {
+            resolved = false;
+        } else {
+            // Invalid feedback input - Prompt user again
+            appendMessage("Please type just 'yes' or 'no' to indicate if the last step worked.", "bot");
+            showToast("Invalid input: Expecting 'yes' or 'no'", 3000);
+            // Keep expecting feedback and set placeholder accordingly
+            expectingFeedback = true;
+            userInput.placeholder = PLACEHOLDER_FEEDBACK;
+            // We don't need to remove the loading message here as we didn't proceed
+            return; // Exit function, don't call API
+        }
+
+        // --- Valid 'yes' or 'no' received ---
+        expectingFeedback = false; // Reset flag: we've received valid feedback
+        userInput.placeholder = PLACEHOLDER_NORMAL; // Reset placeholder for next message
+        showToast("Processing feedback...");
+
+        if (!currentConvoId) {
+             console.error("Feedback Error: Missing conversation ID. Cannot send feedback.");
+             appendMessage("Error: Cannot process feedback as the conversation context was lost.", "bot", ["error-message"]);
+             showToast("Feedback Error", 4000);
+             return; // Don't proceed without convo_id
+        }
+
+        // --- Call the /feedback API ---
+        try {
+            const payload = { convo_id: currentConvoId, resolved: resolved };
+            const response = await fetch(API_FEEDBACK_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(20000) // Shorter timeout for feedback
+            });
+
+            const data = await response.json(); // Try parsing JSON
+
+            if (!response.ok) {
+                // Handle HTTP errors from feedback endpoint
+                const errorText = data?.error || `Server Error: ${response.status} ${response.statusText || 'Unknown Error'}`;
+                console.error('API /feedback Error:', errorText, 'Status:', response.status, 'Response Body:', data);
+                appendMessage(`Error submitting feedback: ${errorText}`, "bot", ["error-message"]);
+                showToast("Feedback submission error", 4000);
+            } else {
+                // Handle successful feedback submission
+                if (data.reply) {
+                    appendMessage(data.reply, "bot"); // Show the agent's response to the feedback
+                    showToast("Feedback processed", 2500);
+                    // Award coins if applicable and reward > 0
+                    if (data.reward && data.reward > 0) {
+                        updateCoinCounter(currentCoins + data.reward);
+                        showToast(`+${data.reward} coins! ✨`, 3500); // Slightly longer toast for reward
+                    }
+                } else {
+                    // Handle case where response is OK but reply is missing
+                    console.error("/feedback success response missing 'reply':", data);
+                    // Show a generic acknowledgement
+                    appendMessage("Thanks for the feedback!", "bot");
+                }
+            }
+        } catch (error) {
+            // Handle network errors, timeouts, JSON errors for feedback endpoint
+             console.error('Network/Fetch Error (/feedback):', error);
+             let errorMsgUser = "Network Error: Could not submit feedback. Please try again.";
+              if (error.name === 'AbortError') {
+                 errorMsgUser = "Feedback request timed out.";
+                 showToast("Feedback Timeout", 4000);
+             } else if (error instanceof SyntaxError) {
+                  errorMsgUser = "Error: Received an invalid response format after submitting feedback.";
+                  showToast("Invalid Response Format", 4000);
+             } else if (error instanceof TypeError && error.message.includes('NetworkError')) {
+                  errorMsgUser = "Network Error: Could not submit feedback. Please check your connection.";
+                  showToast("Feedback Connection Failed", 4000);
+             } else {
+                 errorMsgUser = "An unexpected network error occurred while submitting feedback.";
+                 showToast("Unexpected Feedback Error", 4000);
+             }
+             appendMessage(errorMsgUser, "bot", ["error-message"]);
+        } finally {
+             // Ensure feedback flag is reset and placeholder is normal after attempting to process
+             expectingFeedback = false;
+             userInput.placeholder = PLACEHOLDER_NORMAL;
+        }
+     }
+
+    // --- Initial Setup ---
+    userInput.focus(); // Focus the input field on load
+    updateCoinCounter(0); // Initialize coin display
+
+  </script>
+</body>
+</html>
